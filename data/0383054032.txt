@@ -1,0 +1,1 @@
+{"username": "0383054032", "password": "Vc888999@", "account_number": "1029012258", "sessionId": "2f0eb406964b45f6b18fec7695e3517c", "mobileId": "21659654", "clientId": "36556061", "cif": "24750007", "E": "", "res": "", "tranId": "", "browserToken": "", "browserId": "ea3410e8ebf94d637aaf9962ffdb29e3"}
