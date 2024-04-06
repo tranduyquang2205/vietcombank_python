@@ -33,7 +33,7 @@ def confirm_api(input: LoginDetails):
 @app.post('/get_balance', tags=["get_balance"])
 def get_balance_api(input: LoginDetails):
         vcb = VietCombank(input.username, input.password, input.account_number)
-        verify_otp = vcb.submitOtpLogin(otp)
+        verify_otp = vcb.submitOtpLogin(input.otp)
         return verify_otp
     
 class Transactions(BaseModel):
