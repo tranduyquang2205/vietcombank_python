@@ -27,14 +27,14 @@ class ConfirmDetails(BaseModel):
 @app.post('/confirm', tags=["confirm"])
 def confirm_api(input: LoginDetails):
         vcb = VietCombank(input.username, input.password, input.account_number)
-        verify_otp = vcb.submitOtpLogin(otp)
-        return verify_otp
-
-@app.post('/get_balance', tags=["get_balance"])
-def get_balance_api(input: LoginDetails):
-        vcb = VietCombank(input.username, input.password, input.account_number)
         verify_otp = vcb.submitOtpLogin(input.otp)
         return verify_otp
+
+# @app.post('/get_balance', tags=["get_balance"])
+# def get_balance_api(input: LoginDetails):
+#         vcb = VietCombank(input.username, input.password, input.account_number)
+#         verify_otp = vcb.submitOtpLogin(input.otp)
+#         return verify_otp
     
 class Transactions(BaseModel):
     username: str
@@ -48,7 +48,6 @@ class Transactions(BaseModel):
 @app.post('/get_transactions', tags=["get_transactions"])
 def get_transactions_api(input: Transactions):
         vcb = VietCombank(input.username, input.password, input.account_number)
-        response = vcb.doLogin()
         history = vcb.getHistories(input.from_date, input.to_date, input.account_number, input.page,input.limit)
         return history
 
