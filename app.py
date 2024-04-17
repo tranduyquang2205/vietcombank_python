@@ -27,7 +27,7 @@ class ConfirmDetails(BaseModel):
     account_number: str
     otp: str
 @app.post('/confirm', tags=["confirm"])
-def confirm_api(input: LoginDetails):
+def confirm_api(input: ConfirmDetails):
         vcb = VietCombank(input.username, input.password, input.account_number)
         verify_otp = vcb.submitOtpLogin(input.otp)
         return verify_otp
