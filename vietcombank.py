@@ -10,6 +10,7 @@ import json
 import os
 class VietCombank:
     def __init__(self, username, password, account_number):
+        self.is_login = False
         self.keyanticaptcha = "f3a44e66302c61ffec07c80f4732baf3"
         self.file = f"data/{username}.txt"
         self.url = {
@@ -75,6 +76,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             self.tranId = ""
             self.browserId = hashlib.md5(self.username.encode()).hexdigest()
             self.save_data()
+            
         else:
             self.parse_data()
     def save_data(self):
@@ -237,7 +239,8 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             return self.chooseOtpType(result["transaction"]["tranId"], type)
         else:
             return {
-                'success': False,
+                'code': 400,
+                'success': True,
                 'message': "checkBrowser failed",
                 "param": param,
                 'data': result or ""
@@ -266,8 +269,9 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             self.tranId = tranID
             self.saveData()
             return {
-                'success': True,
-                'message': "ok",
+                    'code': 200,
+                    'success': True,
+                    'message': 'Thành công',
                 "result": {
                     "browserToken": self.browserToken,
                     "tranId": result.get("tranId", ""),
@@ -278,6 +282,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             }
         else:
             return {
+                'code': 400,
                 'success': False,
                 'message': result["des"],
                 "param": param,
@@ -314,14 +319,16 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             sv = self.saveBrowser()
             if sv["code"] == "00":
                 return {
+                    'code': 200,
                     'success': True,
-                    'message': "success",
+                    'message': 'Thành công',
                     "d": sv,
                     'session': session,
                     'data': result or ""
                 }
             else:
                 return {
+                    'code': 400,
                     'success': False,
                     'message': sv["des"],
                     "param": param,
@@ -329,6 +336,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
                 }
         else:
             return {
+                'code': 500,
                 'success': False,
                 'message': result["des"],
                 "param": param,
@@ -381,8 +389,9 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             session = {"sessionId": self.sessionId, "mobileId": self.mobileId, "clientId": self.clientId, "cif": self.cif}
             self.saveData()
             return {
+                'code': 200,
                 'success': True,
-                'message': "success",
+                'message': 'Đăng nhập thành công',
                 'session': session,
                 'data': result or ""
             }
@@ -501,6 +510,10 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         return result
 
     def getHistories(self, fromDate="16/06/2023", toDate="16/06/2023", account_number='', page=0,limit = 20):
+        if not self.is_login:
+                login = self.doLogin()
+                if not login['success']:
+                    return login
         param = {
             "DT": self.DT,
             "OV": self.OV,
@@ -524,7 +537,17 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "sessionId": self.sessionId
         }
         result = self.curlPost(self.url['getHistories'], param)
-        return result
+        if result['code'] == '00' and 'transactions' in result:
+            return {'code':200,'success': True, 'message': 'Thành công',
+                            'data':{
+                                'transactions':result['transactions'],
+                    }}
+        else:
+            return  {
+                    "success": False,
+                    "code": 503,
+                    "message": "Service Unavailable!"
+                }
 
     def getBanks(self):
         param = {
