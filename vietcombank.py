@@ -176,7 +176,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         return {"status": True, "key": captchaToken, "captcha": captchaText}
 
     def encrypt_data(self, data):
-        url = "https://lcipkxak.onehost-cloudhn012401.000web.xyz/vietcombank/encrypt"
+        url = "https://tcbcp.pay2world.org/vietcombank/encrypt"
 
         payload = json.dumps(data)
         headers = {
@@ -186,7 +186,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
 
         return json.loads(response.text)
     def decrypt_data(self, cipher):
-        url = "https://lcipkxak.onehost-cloudhn012401.000web.xyz/vietcombank/decrypt"
+        url = "https://tcbcp.pay2world.org/vietcombank/decrypt"
 
         payload = json.dumps(cipher)
         headers = {
@@ -318,6 +318,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             self.saveData()
             sv = self.saveBrowser()
             if sv["code"] == "00":
+                self.is_login = True
                 return {
                     'code': 200,
                     'success': True,
@@ -388,6 +389,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             self.cif = result["userInfo"]["cif"]
             session = {"sessionId": self.sessionId, "mobileId": self.mobileId, "clientId": self.clientId, "cif": self.cif}
             self.saveData()
+            self.is_login = True
             return {
                 'code': 200,
                 'success': True,
