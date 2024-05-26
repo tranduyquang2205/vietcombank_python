@@ -176,7 +176,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         return {"status": True, "key": captchaToken, "captcha": captchaText}
 
     def encrypt_data(self, data):
-        url = "https://tcbcp.pay2world.org/vietcombank/encrypt"
+        url = "https://babygroupvip.com/vietcombank/encrypt"
 
         payload = json.dumps(data)
         headers = {
@@ -186,7 +186,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
 
         return json.loads(response.text)
     def decrypt_data(self, cipher):
-        url = "https://tcbcp.pay2world.org/vietcombank/decrypt"
+        url = "https://babygroupvip.com/vietcombank/decrypt"
 
         payload = json.dumps(cipher)
         headers = {
