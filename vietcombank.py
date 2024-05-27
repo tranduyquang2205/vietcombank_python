@@ -33,9 +33,10 @@ class VietCombank:
         self._timeout = 60
         self.DT = "Windows"
         self.OV = "10"
-        self.PM = "Chrome 122.0.0.0"
+        self.PM = "Microsoft Edge 125.0.0.0"
         self.checkAcctPkg = "1"
         self.captcha1st = ""
+        self.challenge = ""
         self.defaultPublicKey = "-----BEGIN PUBLIC KEY-----\n\
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAikqQrIzZJkUvHisjfu5Z\n\
 CN+TLy//43CIc5hJE709TIK3HbcC9vuc2+PPEtI6peSUGqOnFoYOwl3i8rRdSaK1\n\
@@ -235,6 +236,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "user": self.username
         }
         result = self.curlPost(self.url['authen-service'] + "3008", param)
+        print(result)
         if "tranId" in result["transaction"]:
             return self.chooseOtpType(result["transaction"]["tranId"], type)
         else:
@@ -268,6 +270,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         if result["code"] == "00":
             self.tranId = tranID
             self.saveData()
+            self.challenge = result.get("challenge", "")
             return {
                     'code': 200,
                     'success': True,
@@ -305,6 +308,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "browserToken": self.browserToken,
             "tranId": self.tranId,
             "otp": otp,
+            "challenge": self.challenge,
             "user": self.username
         }
         result = self.curlPost(self.url['authen-service'] + "3011", param)
@@ -316,25 +320,37 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             session = {"sessionId": self.sessionId, "mobileId": self.mobileId, "clientId": self.clientId, "cif": self.cif}
             self.res = result
             self.saveData()
-            sv = self.saveBrowser()
-            if sv["code"] == "00":
-                self.is_login = True
-                return {
-                    'code': 200,
-                    'success': True,
-                    'message': 'Thành công',
-                    "d": sv,
-                    'session': session,
-                    'data': result or ""
-                }
+            
+            if result["allowSave"]:
+                sv = self.saveBrowser()
+                if sv["code"] == "00":
+                    self.is_login = True
+                    return {
+                        'code': 200,
+                        'success': True,
+                        'message': 'Thành công',
+                        'saved_browser': True,
+                        "d": sv,
+                        'session': session,
+                        'data': result or ""
+                    }
+                else:
+                    return {
+                        'code': 400,
+                        'success': False,
+                        'message': sv["des"],
+                        "param": param,
+                        'data': sv or ""
+                    }
             else:
                 return {
-                    'code': 400,
-                    'success': False,
-                    'message': sv["des"],
-                    "param": param,
-                    'data': sv or ""
-                }
+                        'code': 200,
+                        'success': True,
+                        'message': 'Thành công',
+                        'saved_browser': False,
+                        'session': session,
+                        'data': result or ""
+                    }
         else:
             return {
                 'code': 500,
@@ -349,9 +365,9 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "DT": self.DT,
             "OV": self.OV,
             "PM": self.PM,
-            "E": "",
+            "E": self.getE() or "",
             "browserId": self.browserId,
-            "browserName": "Chrome 111.0.0.0",
+            "browserName": "Microsoft Edge 125.0.0.0",
             "lang": self.lang,
             "mid": 3009,
             "cif": self.cif,
@@ -382,6 +398,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "user": self.username
         }
         result = self.curlPost(self.url['login'], param)
+        print(result)
         if result["code"] == '00':
             self.sessionId = result["sessionId"]
             self.mobileId = result["userInfo"]["mobileId"]
