@@ -473,7 +473,22 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         response = requests.get(url)
         result = base64.b64encode(response.content).decode('utf-8')
         return result
+    def get_balance(self):
+        """
+        Retrieves the available balance for a given account number from the provided data.
 
+        Parameters:
+        account_number (str): The account number to search for.
+
+        Returns:
+        str: The available balance for the specified account number, or an error message if not found.
+        """
+        data = self.getlistAccount()
+        if data and 'code' in data and data['code'] == '00' and 'DDAccounts' in data:
+            for account in data.get('DDAccounts', []):
+                if account['accountNumber'] == self.account_number:
+                    return account
+            return None
     def getlistAccount(self):
         param = {
             "DT": self.DT,

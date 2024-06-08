@@ -45,11 +45,17 @@ def confirm_api(input: ConfirmDetails):
         print(traceback.format_exc())
         print(sys.exc_info()[2])
         return APIResponse.json_format(response)
-# @app.post('/get_balance', tags=["get_balance"])
-# def get_balance_api(input: LoginDetails):
-#         vcb = VietCombank(input.username, input.password, input.account_number)
-#         verify_otp = vcb.submitOtpLogin(input.otp)
-#         return verify_otp
+@app.post('/balance', tags=["balance"])
+def confirm_api(input: LoginDetails):
+    try:
+        vcb = VietCombank(input.username, input.password, input.account_number)
+        response = vcb.get_balance()
+        return APIResponse.json_format(response)
+    except Exception as e:
+        response = str(e)
+        print(traceback.format_exc())
+        print(sys.exc_info()[2])
+        return APIResponse.json_format(response)
     
 class Transactions(BaseModel):
     username: str
