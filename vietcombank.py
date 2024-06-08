@@ -474,6 +474,10 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         result = base64.b64encode(response.content).decode('utf-8')
         return result
     def get_balance(self):
+        if not self.is_login:
+            login = self.doLogin()
+            if not login['success']:
+                return login
         """
         Retrieves the available balance for a given account number from the provided data.
 
