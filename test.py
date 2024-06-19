@@ -1,7 +1,7 @@
 from vietcombank import VietCombank
 import json
 
-vcb = VietCombank('0886438795', 'Dqxkv2205.,', '0621000456871')
+vcb = VietCombank('0886438795', 'Dqxkv2205!', '0621000456871')
 
 #OTP is required first login only, then youn can call action without it after login
 get_otp = vcb.doLogin()
@@ -16,8 +16,8 @@ if "data" in get_otp and 'mid' in get_otp["data"] and get_otp["data"]['mid']== '
             print(f"OTP verification failed: {verify_otp['des']}")
         
 # OTP is required first login only, then youn can call action without it after login
-result = vcb.get_balance()
-# result = vcb.getHistories("15/01/2024", "15/01/2024", '0621000456871', 0)
+# result = vcb.get_balance()
+result = vcb.getHistories("15/01/2024", "15/01/2024", '0621000456871', 0)
 print((result))
 # account_number="0621000456871"
 # amount="50000"

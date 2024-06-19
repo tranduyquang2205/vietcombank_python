@@ -33,7 +33,8 @@ class VietCombank:
         self._timeout = 60
         self.DT = "Windows"
         self.OV = "10"
-        self.PM = "Microsoft Edge 125.0.0.0"
+        self.appVersion = ""
+        self.PM = "Microsoft Edge 126.0.0.0"
         self.checkAcctPkg = "1"
         self.captcha1st = ""
         self.challenge = ""
@@ -80,6 +81,9 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             
         else:
             self.parse_data()
+            self.username = username
+            self.password = password
+            self.account_number = account_number
     def save_data(self):
         data = {
             'username': self.username,
@@ -388,17 +392,24 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "OV": self.OV,
             "PM": self.PM,
             "E": self.getE() or "",
+            "appVersion": self.appVersion,
+            
             "browserId": self.browserId,
             "captchaToken": solveCaptcha["key"],
             "captchaValue": solveCaptcha["captcha"],
-            "checkAcctPkg": self.checkAcctPkg,
+            
+            "cif": self.cif,
+            "clientId": self.clientId,
+            
+            "mobileId": self.mobileId,
             "lang": self.lang,
             "mid": 6,
             "password": self.password,
-            "user": self.username
+            "user": self.username,
+            "sessionId": self.sessionId
+            
         }
         result = self.curlPost(self.url['login'], param)
-        print(result)
         if result["code"] == '00':
             self.sessionId = result["sessionId"]
             self.mobileId = result["userInfo"]["mobileId"]
