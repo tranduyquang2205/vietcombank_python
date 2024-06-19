@@ -507,17 +507,17 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         if data and 'code' in data and data['code'] == '00' and 'DDAccounts' in data:
             for account in data.get('DDAccounts', []):
                 if self.account_number == account['accountNumber']:
-                    if int(account['availableBalance']) < 0:
+                    if float(account['availableBalance']) < 0:
                         return {'code':448,'success': False, 'message': 'Blocked account with negative balances!',
                                 'data': {
-                                    'balance':int(account['availableBalance'])
+                                    'balance':float(account['availableBalance'])
                                 }
                                 }
                     else:
                         return {'code':200,'success': True, 'message': 'Thành công',
                                 'data':{
                                     'account_number':self.account_number,
-                                    'balance':int(account['availableBalance'])
+                                    'balance':float(account['availableBalance'])
                         }}
             return {'code':404,'success': False, 'message': 'account_number not found!'} 
         else: 
