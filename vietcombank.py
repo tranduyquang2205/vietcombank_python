@@ -191,15 +191,30 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
 
         return json.loads(response.text)
     def decrypt_data(self, cipher):
-        url = "https://babygroupvip.com/vietcombank/decrypt"
-
+        """
+        https://vcbbiz1.pay2world.vip/vietcombank/encrypt_biz
+        https://tcbbcp1.pay2world.vip/vietcombank/encrypt
+        https://encrypt1.pay2world.vip/api.php?act=encrypt_viettin
+        """
+        
+        url_1 = 'https://vcbbiz1.pay2world.vip/vietcombank/decrypt'
+        url_2 = 'https://babygroupvip.com/vietcombank/decrypt'
+        url_3 = 'https://vcbbiz2.pay2world.vip/vietcombank/decrypt'
+        
         payload = json.dumps(cipher)
         headers = {
-        'Content-Type': 'application/json',
+            'Content-Type': 'application/json',
         }
-        response = requests.request("POST", url, headers=headers, data=payload)
-
-        return json.loads(response.text)
+        
+        for _url in [url_1, url_2, url_3]:
+            try:
+                response = requests.request("POST", _url, headers=headers, data=payload, timeout=10)
+                if response.status_code in [404, 502]:
+                    continue
+                return json.loads(response.text)
+            except:
+                continue
+        return {}
 
     def curlPost(self, url, data):
         encryptedData = self.encrypt_data(data)
