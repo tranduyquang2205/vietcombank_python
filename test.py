@@ -1,7 +1,7 @@
 from vietcombank import VietCombank
 import json
 
-vcb = VietCombank('0886438795', 'Dqxkv2205!', '0621000456871')
+vcb = VietCombank('0867972524', 'Anhtuan123%', '1042068629')
 
 #OTP is required first login only, then youn can call action without it after login
 get_otp = vcb.doLogin()
