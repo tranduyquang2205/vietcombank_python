@@ -1,14 +1,18 @@
 from vietcombank import VietCombank
 import json
 
-vcb = VietCombank('0867972524', 'Anhtuan123%', '1042068629')
-
+vcb = VietCombank('0886438795', 'Dqxkv2205.,!', '0621000456871')
+verify_type="1"
 #OTP is required first login only, then youn can call action without it after login
-get_otp = vcb.doLogin()
+get_otp = vcb.doLogin(verify_type)
 print(get_otp)
 if "data" in get_otp and 'mid' in get_otp["data"] and get_otp["data"]['mid']== '3010':
+    if verify_type == "5":
         otp = input("challenge_CODE:"+get_otp["data"]['challenge']+" | Enter SMART OTP: ")
         verify_otp = vcb.submitOtpLogin(otp)
+    else:
+        otp = input("Enter SMS OTP:")
+        verify_otp = vcb.submitOtpSMS(otp)
         print(verify_otp)
         if "success" in verify_otp and verify_otp["success"] == True and 'session' in verify_otp:
             print('ACTIVE SUCCESSFULL')

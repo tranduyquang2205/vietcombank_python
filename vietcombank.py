@@ -34,7 +34,7 @@ class VietCombank:
         self.DT = "Windows"
         self.OV = "10"
         self.appVersion = ""
-        self.PM = "Microsoft Edge 126.0.0.0"
+        self.PM = "Edge 127.0.0.0"
         self.checkAcctPkg = "1"
         self.captcha1st = ""
         self.challenge = ""
@@ -291,6 +291,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "E": self.getE() or "",
             "browserId": self.browserId,
             "lang": self.lang,
+            "appVersion": "",
             "mid": 3010,
             "cif": "",
             "clientId": "",
@@ -336,6 +337,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "browserId": self.browserId,
             "lang": self.lang,
             "mid": 3011,
+            "appVersion": "",
             "cif": "",
             "clientId": "",
             "mobileId": "",
@@ -394,7 +396,74 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
                 "param": param,
                 'data': result or ""
             }
-
+    def submitOtpSMS(self, otp):
+        param = {
+            "DT": self.DT,
+            "OV": self.OV,
+            "PM": self.PM,
+            "E": self.getE() or "",
+            "browserId": self.browserId,
+            "lang": self.lang,
+            "mid": 3011,
+            "appVersion": "",
+            "cif": "",
+            "clientId": "",
+            "mobileId": "",
+            "sessionId": "",
+            "browserToken": self.browserToken,
+            "tranId": self.tranId,
+            "otp": otp,
+            "user": self.username
+        }
+        result = self.curlPost(self.url['authen-service'] + "3011", param)
+        if result["code"] == "00":
+            self.sessionId = result["sessionId"]
+            self.mobileId = result["userInfo"]["mobileId"]
+            self.clientId = result["userInfo"]["clientId"]
+            self.cif = result["userInfo"]["cif"]
+            session = {"sessionId": self.sessionId, "mobileId": self.mobileId, "clientId": self.clientId, "cif": self.cif}
+            self.res = result
+            self.saveData()
+            
+            if result["allowSave"]:
+                sv = self.saveBrowser()
+                print('sv',sv)
+                if sv["code"] == "00":
+                    self.is_login = True
+                    return {
+                        'code': 200,
+                        'success': True,
+                        'message': 'Thành công',
+                        'saved_browser': True,
+                        "d": sv,
+                        'session': session,
+                        'data': result or ""
+                    }
+                else:
+                    return {
+                        'code': 400,
+                        'success': False,
+                        'message': sv["des"],
+                        "param": param,
+                        'data': sv or ""
+                    }
+            else:
+                return {
+                        'code': 200,
+                        'success': True,
+                        'message': 'Thành công',
+                        'saved_browser': False,
+                        'session': session,
+                        'data': result or ""
+                    }
+        else:
+            return {
+                'code': 500,
+                'success': False,
+                'message': result["des"],
+                "param": param,
+                'data': result or ""
+            }
     def saveBrowser(self):
         param = {
             "DT": self.DT,
@@ -402,7 +471,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "PM": self.PM,
             "E": self.getE() or "",
             "browserId": self.browserId,
-            "browserName": "Microsoft Edge 125.0.0.0",
+            "browserName": "Edge 127.0.0.0",
             "lang": self.lang,
             "mid": 3009,
             "cif": self.cif,
@@ -414,7 +483,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         result = self.curlPost(self.url['authen-service'] + "3009", param)
         return result
 
-    def doLogin(self):
+    def doLogin(self,verify_type="1"):
         solveCaptcha = self.solveCaptcha()
         if not solveCaptcha["status"]:
             return solveCaptcha
@@ -458,7 +527,11 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             }
         elif result["code"] == '20231' and result["mid"] == '6':
             self.browserToken = result["browserToken"]
-            return self.checkBrowser(5)  # 5 la smart otp
+            if verify_type == "smart_otp":
+                return self.checkBrowser("5")  # 5 la smart otp
+            elif verify_type == "sms_otp":
+                return self.checkBrowser("1")  # 5 la smart otp
+            return self.checkBrowser("1") 
         else:
             return {
                 'success': False,

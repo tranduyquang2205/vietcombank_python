@@ -18,11 +18,12 @@ class LoginDetails(BaseModel):
     username: str
     password: str
     account_number: str
+    verify_type: str
 @app.post('/login', tags=["login"])
 def login_api(input: LoginDetails):
     try:
         vcb = VietCombank(input.username, input.password, input.account_number)
-        response = vcb.doLogin()
+        response = vcb.doLogin(input.verify_type)
         return APIResponse.json_format(response)
     except Exception as e:
         response = str(e)
@@ -34,11 +35,15 @@ class ConfirmDetails(BaseModel):
     password: str
     account_number: str
     otp: str
+    verify_type: str
 @app.post('/confirm', tags=["confirm"])
 def confirm_api(input: ConfirmDetails):
     try:
         vcb = VietCombank(input.username, input.password, input.account_number)
-        response = vcb.submitOtpLogin(input.otp)
+        if input.verify_type == "smart_otp":
+            response = vcb.submitOtpLogin(input.otp)
+        elif input.verify_type == "sms_otp":
+            response = vcb.submitOtpSMS(input.otp)
         return APIResponse.json_format(response)
     except Exception as e:
         response = str(e)
