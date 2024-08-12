@@ -103,6 +103,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             'browserId': self.browserId,
             'verify_type': self.verify_type,
             'time_login': self.time_login,
+            'is_login': self.is_login,
         }
         with open(self.file, 'w') as f:
             json.dump(data, f)
@@ -127,6 +128,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         self.E = data.get('E', '')
         self.verify_type = data.get("verify_type", "")
         self.time_login = data.get("time_login", "")
+        self.is_login = data.get("is_login", "")
     def createTaskCaptcha(self, base64_img):
         url = 'http://103.72.96.214:8277/api/captcha/vietcombank'
         payload = json.dumps({
