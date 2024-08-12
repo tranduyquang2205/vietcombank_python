@@ -567,7 +567,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         result = base64.b64encode(response.content).decode('utf-8')
         return result
     def get_balance(self):
-        if not self.is_login or time.time() - self.time_login > 900:
+        if not self.is_login or time.time() - self.time_login > 1800:
             login = self.doLogin()
             if not login['success']:
                 return login
@@ -660,7 +660,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         return result
 
     def getHistories(self, fromDate="16/06/2023", toDate="16/06/2023", account_number='', page=0,limit = 20):
-        if not self.is_login or time.time() - self.time_login > 900:
+        if not self.is_login or time.time() - self.time_login > 1800:
                 login = self.doLogin()
                 if not login['success']:
                     return login
