@@ -8,11 +8,14 @@ import string
 import base64
 import json
 import os
+import time
+
 class VietCombank:
     def __init__(self, username, password, account_number):
         self.is_login = False
-        self.keyanticaptcha = "f3a44e66302c61ffec07c80f4732baf3"
+        self.time_login = time.time()
         self.file = f"data/{username}.txt"
+        self.verify_type = '5'
         self.url = {
             "getCaptcha": "https://digiapp.vietcombank.com.vn/utility-service/v1/captcha/",
             "login": "https://digiapp.vietcombank.com.vn/authen-service/v1/login",
@@ -98,6 +101,8 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             'tranId': getattr(self, 'tranId', ''),
             'browserToken': getattr(self, 'browserToken', ''),
             'browserId': self.browserId,
+            'verify_type': self.verify_type,
+            'time_login': self.time_login,
         }
         with open(self.file, 'w') as f:
             json.dump(data, f)
@@ -120,6 +125,8 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         self.browserToken = data.get('browserToken', '')
         self.browserId = data.get('browserId', '')
         self.E = data.get('E', '')
+        self.verify_type = data.get("verify_type", "")
+        self.time_login = data.get("time_login", "")
     def createTaskCaptcha(self, base64_img):
         url = 'http://103.72.96.214:8277/api/captcha/vietcombank'
         payload = json.dumps({
@@ -254,7 +261,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         result = self.decrypt_data(response.json())
         return result
 
-    def checkBrowser(self, type=1):
+    def checkBrowser(self, type='1'):
         param = {
             "DT": self.DT,
             "OV": self.OV,
@@ -273,7 +280,13 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         result = self.curlPost(self.url['authen-service'] + "3008", param)
         print(result)
         if "tranId" in result["transaction"]:
-            return self.chooseOtpType(result["transaction"]["tranId"], type)
+            types = result["transaction"]['listMethods']
+            if '5' in types:
+                self.verify_type = '5'
+                return self.chooseOtpType(result["transaction"]["tranId"], '5')
+            else:
+                self.verify_type = '1'
+                return self.chooseOtpType(result["transaction"]["tranId"], '1')
         else:
             return {
                 'code': 400,
@@ -283,7 +296,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
                 'data': result or ""
             }
 
-    def chooseOtpType(self, tranID, type=1):
+    def chooseOtpType(self, tranID, type='1'):
         param = {
             "DT": self.DT,
             "OV": self.OV,
@@ -305,7 +318,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         result = self.curlPost(self.url['authen-service'] + "3010", param)
         if result["code"] == "00":
             self.tranId = tranID
-            self.saveData()
+            self.save_data()
             self.challenge = result.get("challenge", "")
             return {
                     'code': 200,
@@ -356,12 +369,12 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             self.cif = result["userInfo"]["cif"]
             session = {"sessionId": self.sessionId, "mobileId": self.mobileId, "clientId": self.clientId, "cif": self.cif}
             self.res = result
-            self.saveData()
-            
+            self.is_login = True
+            self.time_login = time.time()
+            self.save_data()
             if result["allowSave"]:
                 sv = self.saveBrowser()
                 if sv["code"] == "00":
-                    self.is_login = True
                     return {
                         'code': 200,
                         'success': True,
@@ -423,13 +436,14 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             self.cif = result["userInfo"]["cif"]
             session = {"sessionId": self.sessionId, "mobileId": self.mobileId, "clientId": self.clientId, "cif": self.cif}
             self.res = result
-            self.saveData()
-            
+            self.is_login = True
+            self.time_login = time.time()
+            self.save_data()
             if result["allowSave"]:
                 sv = self.saveBrowser()
                 print('sv',sv)
                 if sv["code"] == "00":
-                    self.is_login = True
+                    
                     return {
                         'code': 200,
                         'success': True,
@@ -483,7 +497,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         result = self.curlPost(self.url['authen-service'] + "3009", param)
         return result
 
-    def doLogin(self,verify_type="1"):
+    def doLogin(self):
         solveCaptcha = self.solveCaptcha()
         if not solveCaptcha["status"]:
             return solveCaptcha
@@ -516,8 +530,9 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             self.clientId = result["userInfo"]["clientId"]
             self.cif = result["userInfo"]["cif"]
             session = {"sessionId": self.sessionId, "mobileId": self.mobileId, "clientId": self.clientId, "cif": self.cif}
-            self.saveData()
             self.is_login = True
+            self.time_login = time.time()
+            self.save_data()
             return {
                 'code': 200,
                 'success': True,
@@ -527,11 +542,11 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             }
         elif result["code"] == '20231' and result["mid"] == '6':
             self.browserToken = result["browserToken"]
-            if verify_type == "smart_otp":
-                return self.checkBrowser("5")  # 5 la smart otp
-            elif verify_type == "sms_otp":
-                return self.checkBrowser("1")  # 5 la smart otp
-            return self.checkBrowser("1") 
+            # if verify_type == "smart_otp":
+            #     return self.checkBrowser("5")  # 5 la smart otp
+            # elif verify_type == "sms_otp":
+            #     return self.checkBrowser("1")  # 5 la smart otp
+            return self.checkBrowser() 
         else:
             return {
                 'success': False,
@@ -539,43 +554,6 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
                 "param": param,
                 'data': result or ""
             }
-
-    def saveData(self):
-        data = {
-            'username': self.username,
-            'password': self.password,
-            'account_number': self.account_number,
-            'sessionId': self.sessionId,
-            'mobileId': self.mobileId,
-            'clientId': self.clientId,
-            'cif': self.cif,
-            'E': self.E,
-            'res': self.res,
-            'tranId': self.tranId,
-            'browserToken': self.browserToken,
-            'browserId': self.browserId,
-        }
-        with open(f"data/{self.username}.txt", "w") as file:
-            json.dump(data, file)
-
-    def parseData(self):
-        with open(f"data/{self.username}.txt", "r") as file:
-            data = json.load(file)
-            self.username = data["username"]
-            self.password = data["password"]
-            self.account_number = data.get("account_number", "")
-            self.sessionId = data.get("sessionId", "")
-            self.mobileId = data.get("mobileId", "")
-            self.clientId = data.get("clientId", "")
-            self.token = data.get("token", "")
-            self.accessToken = data.get("accessToken", "")
-            self.authToken = data.get("authToken", "")
-            self.cif = data.get("cif", "")
-            self.res = data.get("res", "")
-            self.tranId = data.get("tranId", "")
-            self.browserToken = data.get("browserToken", "")
-            self.browserId = data.get("browserId", "")
-            self.E = data.get("E", "")
 
     def getE(self):
         ahash = hashlib.md5(self.username.encode()).hexdigest()
@@ -589,7 +567,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         result = base64.b64encode(response.content).decode('utf-8')
         return result
     def get_balance(self):
-        if not self.is_login:
+        if not self.is_login or time.time() - self.time_login > 900:
             login = self.doLogin()
             if not login['success']:
                 return login
@@ -625,6 +603,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
                         }}
             return {'code':404,'success': False, 'message': 'account_number not found!'} 
         else: 
+            self.is_login = False
             return {'code':520 ,'success': False, 'message': 'Unknown Error!'} 
     def getlistAccount(self):
         param = {
@@ -681,7 +660,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         return result
 
     def getHistories(self, fromDate="16/06/2023", toDate="16/06/2023", account_number='', page=0,limit = 20):
-        if not self.is_login:
+        if not self.is_login or time.time() - self.time_login > 900:
                 login = self.doLogin()
                 if not login['success']:
                     return login
@@ -714,6 +693,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
                                 'transactions':result['transactions'],
                     }}
         else:
+            self.is_login = False
             return  {
                     "success": False,
                     "code": 503,
