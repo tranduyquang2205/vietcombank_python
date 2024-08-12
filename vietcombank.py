@@ -606,6 +606,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             return {'code':404,'success': False, 'message': 'account_number not found!'} 
         else: 
             self.is_login = False
+            self.save_data()
             return {'code':520 ,'success': False, 'message': 'Unknown Error!'} 
     def getlistAccount(self):
         param = {
@@ -696,6 +697,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
                     }}
         else:
             self.is_login = False
+            self.save_data()
             return  {
                     "success": False,
                     "code": 503,
