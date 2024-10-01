@@ -571,7 +571,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
     def get_balance(self):
         if not self.is_login or time.time() - self.time_login > 1800:
             login = self.doLogin()
-            if not login['success']:
+            if 'success' not in login or not login['success']:
                 return login
         """
         Retrieves the available balance for a given account number from the provided data.
@@ -588,6 +588,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         #         if account['accountNumber'] == self.account_number:
         #             return account
         #     return None
+        print(data)
         if data and 'code' in data and data['code'] == '00' and 'DDAccounts' in data:
             for account in data.get('DDAccounts', []):
                 if self.account_number == account['accountNumber']:
@@ -604,6 +605,10 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
                                     'balance':float(account['availableBalance'])
                         }}
             return {'code':404,'success': False, 'message': 'account_number not found!'} 
+        elif 'code' in data and data['code'] == '108': 
+            self.is_login = False
+            self.save_data()
+            return {'code':401 ,'success': False, 'message': data['des'] if 'des' in data else data} 
         else: 
             self.is_login = False
             self.save_data()
@@ -665,7 +670,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
     def getHistories(self, fromDate="16/06/2023", toDate="16/06/2023", account_number='', page=0,limit = 20):
         if not self.is_login or time.time() - self.time_login > 1800:
                 login = self.doLogin()
-                if not login['success']:
+                if 'success' not in login or not login['success']:
                     return login
         param = {
             "DT": self.DT,
