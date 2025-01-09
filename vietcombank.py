@@ -196,7 +196,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         https://encrypt1.pay2world.vip/api.php?act=encrypt_viettin
         """
         
-        url_1 = 'https://vcbbiz1.pay2world.vip/vietcombank/encrypt'
+        url_1 = 'https://sodo666.vip/vietcombank/encrypt'
         url_2 = 'https://babygroupvip.com/vietcombank/encrypt'
         url_3 = 'https://vcbbiz2.pay2world.vip/vietcombank/encrypt'
         
@@ -222,8 +222,8 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         https://encrypt1.pay2world.vip/api.php?act=encrypt_viettin
         """
         
-        url_1 = 'https://vcbbiz1.pay2world.vip/vietcombank/decrypt'
-        url_2 = 'https://babygroupvip.com/vietcombank/decrypt'
+        url_1 = 'https://sodo666.vip/vietcombank/decrypt'
+        url_2 = 'https://vcbcp1.pay2world.vip/vietcombank/decrypt'
         url_3 = 'https://vcbbiz2.pay2world.vip/vietcombank/decrypt'
         
         payload = json.dumps(cipher)
@@ -243,6 +243,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
 
     def curlPost(self, url, data):
         encryptedData = self.encrypt_data(data)
+        print(encryptedData)
         headers = {
             'Accept': 'application/json',
             'Accept-Encoding': 'gzip, deflate, br',
@@ -526,7 +527,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             
         }
         result = self.curlPost(self.url['login'], param)
-        if result["code"] == '00':
+        if 'code' in result and result["code"] == '00':
             self.sessionId = result["sessionId"]
             self.mobileId = result["userInfo"]["mobileId"]
             self.clientId = result["userInfo"]["clientId"]
