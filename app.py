@@ -1,4 +1,4 @@
-from vietcombank import VietCombank
+from vietcombank import VCB
 import json
 import requests
 import json
@@ -21,7 +21,7 @@ class LoginDetails(BaseModel):
 @app.post('/login', tags=["login"])
 def login_api(input: LoginDetails):
     try:
-        vcb = VietCombank(input.username, input.password, input.account_number)
+        vcb = VCB(input.username, input.password, input.account_number)
         response = vcb.doLogin()
         return APIResponse.json_format(response)
     except Exception as e:
@@ -37,7 +37,7 @@ class ConfirmDetails(BaseModel):
 @app.post('/confirm', tags=["confirm"])
 def confirm_api(input: ConfirmDetails):
     try:
-        vcb = VietCombank(input.username, input.password, input.account_number)
+        vcb = VCB(input.username, input.password, input.account_number)
         if vcb.verify_type == '5':
             response = vcb.submitOtpLogin(input.otp)
         else:
@@ -51,7 +51,7 @@ def confirm_api(input: ConfirmDetails):
 @app.post('/balance', tags=["balance"])
 def confirm_api(input: LoginDetails):
     try:
-        vcb = VietCombank(input.username, input.password, input.account_number)
+        vcb = VCB(input.username, input.password, input.account_number)
         response = vcb.get_balance()
         return APIResponse.json_format(response)
     except Exception as e:
@@ -72,7 +72,7 @@ class Transactions(BaseModel):
 @app.post('/get_transactions', tags=["get_transactions"])
 def get_transactions_api(input: Transactions):
     try:
-        vcb = VietCombank(input.username, input.password, input.account_number)
+        vcb = VCB(input.username, input.password, input.account_number)
         response = vcb.getHistories(input.from_date, input.to_date, input.account_number, input.page,input.limit)
         return APIResponse.json_format(response)
     except Exception as e:

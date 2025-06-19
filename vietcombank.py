@@ -9,63 +9,68 @@ import base64
 import json
 import os
 import time
+import time, binascii
+import unidecode
+list_bank = []
+import time
+banks_mapping = None
+with open('banks.json','r', encoding='utf-8') as f:
+    banks_mapping = json.load(f)
+def mapping_bank_code(bank_code):
+    global banks_mapping
+    for bank in banks_mapping['data']:
+        if bank['code'] == bank_code:
+            return {'shortName': bank['shortName'], 'displayNameVi': bank['name'], 'bank_code': bank['bin']}
 
-class VietCombank:
-    def __init__(self, username, password, account_number):
+    return None
+with open('list_bank_vcb.json', 'r',encoding='utf-8') as json_file:
+    list_bank = json.load(json_file)
+class VCB:
+    def __init__(self, username, password, account_number,proxy_list=None):
         self.is_login = False
         self.time_login = time.time()
-        self.file = f"data/{username}.txt"
+        self.file = f"db/users/{username}.json"
         self.verify_type = '5'
+        self.x_lim_id = self.generate_sha256(username)
         self.url = {
             "getCaptcha": "https://digiapp.vietcombank.com.vn/utility-service/v1/captcha/",
             "login": "https://digiapp.vietcombank.com.vn/authen-service/v1/login",
             "authen-service": "https://digiapp.vietcombank.com.vn/authen-service/v1/api-",
             "getHistories": "https://digiapp.vietcombank.com.vn/bank-service/v1/transaction-history",
-            "tranferOut": "https://digiapp.vietcombank.com.vn/napas-service/v1/init-fast-transfer-via-accountno",
+            "tranferOut_1": "https://digiapp.vietcombank.com.vn/napas-service/v1/get-channel-transfer-intersea",
+            "tranferOut_2": "https://digiapp.vietcombank.com.vn/napas-service/v2/init-fast-transfer-via-accountno",
             "genOtpOut": "https://digiapp.vietcombank.com.vn/napas-service/v1/transfer-gen-otp",
             "genOtpIn": "https://digiapp.vietcombank.com.vn/transfer-service/v1/transfer-gen-otp",
             "confirmTranferOut": "https://digiapp.vietcombank.com.vn/napas-service/v1/transfer-confirm-otp",
             "confirmTranferIn": "https://digiapp.vietcombank.com.vn/transfer-service/v1/transfer-confirm-otp",
-            "tranferIn": "https://digiapp.vietcombank.com.vn/transfer-service/v1/init-internal-transfer",
+            "tranferIn": "https://digiapp.vietcombank.com.vn/transfer-service/v2/init-internal-transfer",
             "getBanks": "https://digiapp.vietcombank.com.vn/utility-service/v1/get-banks",
             "getAccountDeltail": "https://digiapp.vietcombank.com.vn/bank-service/v1/get-account-detail",
             "getlistAccount": "https://digiapp.vietcombank.com.vn/bank-service/v1/get-list-account-via-cif",
-            "getlistDDAccount": "https://digiapp.vietcombank.com.vn/bank-service/v1/get-list-ddaccount"
+            "getlistDDAccount": "https://digiapp.vietcombank.com.vn/bank-service/v1/get-list-ddaccount",
+            "get_bank_name_in": "https://digiapp.vietcombank.com.vn/transfer-service/v1/get-bene-internal-cusname",
+            "get_bank_name_out": "https://digiapp.vietcombank.com.vn/napas-service/v1/inquiry-holdername",
         }
         self.lang = 'vi'
         self._timeout = 60
         self.DT = "Windows"
         self.OV = "10"
         self.appVersion = ""
-        self.PM = "Edge 127.0.0.0"
+        self.PM = "Edge 135.0.0.0"
         self.checkAcctPkg = "1"
         self.captcha1st = ""
         self.challenge = ""
-        self.defaultPublicKey = "-----BEGIN PUBLIC KEY-----\n\
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAikqQrIzZJkUvHisjfu5Z\n\
-CN+TLy//43CIc5hJE709TIK3HbcC9vuc2+PPEtI6peSUGqOnFoYOwl3i8rRdSaK1\n\
-7G2RZN01MIqRIJ/6ac9H4L11dtfQtR7KHqF7KD0fj6vU4kb5+0cwR3RumBvDeMlB\n\
-OaYEpKwuEY9EGqy9bcb5EhNGbxxNfbUaogutVwG5C1eKYItzaYd6tao3gq7swNH7\n\
-p6UdltrCpxSwFEvc7douE2sKrPDp807ZG2dFslKxxmR4WHDHWfH0OpzrB5KKWQNy\n\
-zXxTBXelqrWZECLRypNq7P+1CyfgTSdQ35fdO7M1MniSBT1V33LdhXo73/9qD5e5\n\
-VQIDAQAB\n\
------END PUBLIC KEY-----"
-        self.clientPublicKey = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCg+aN5HEhfrHXCI/pLcv2Mg01gNzuAlqNhL8ojO8KwzrnEIEuqmrobjMFFPkrMXUnmY5cWsm0jxaflAtoqTf9dy1+LL5ddqNOvaPsNhSEMmIUsrppvh1ZbUZGGW6OUNeXBEDXhEF8tAjl3KuBiQFLEECUmCDiusnFoZ2w/1iOZJwIDAQAB"
-        self.clientPrivateKey = "-----BEGIN RSA PRIVATE KEY-----\n\
-MIICXQIBAAKBgQCg+aN5HEhfrHXCI/pLcv2Mg01gNzuAlqNhL8ojO8KwzrnEIEuq\n\
-mrobjMFFPkrMXUnmY5cWsm0jxaflAtoqTf9dy1+LL5ddqNOvaPsNhSEMmIUsrppv\n\
-h1ZbUZGGW6OUNeXBEDXhEF8tAjl3KuBiQFLEECUmCDiusnFoZ2w/1iOZJwIDAQAB\n\
-AoGAEGDV7SCfjHxzjskyUjLk8UL6wGteNnsdLGo8WtFdwbeG1xmiGT2c6eisUWtB\n\
-GQH03ugLG1gUGqulpXtgzyUYcj0spHPiUiPDAPY24DleR7lGZHMfsnu20dyu6Llp\n\
-Xup07OZdlqDGUm9u2uC0/I8RET0XWCbtOSr4VgdHFpMN+MECQQDbN5JOAIr+px7w\n\
-uhBqOnWJbnL+VZjcq39XQ6zJQK01MWkbz0f9IKfMepMiYrldaOwYwVxoeb67uz/4\n\
-fau4aCR5AkEAu/xLydU/dyUqTKV7owVDEtjFTTYIwLs7DmRe247207b6nJ3/kZhj\n\
-gsm0mNnoAFYZJoNgCONUY/7CBHcvI4wCnwJBAIADmLViTcjd0QykqzdNghvKWu65\n\
-D7Y1k/xiscEour0oaIfr6M8hxbt8DPX0jujEf7MJH6yHA+HfPEEhKila74kCQE/9\n\
-oIZG3pWlU+V/eSe6QntPkE01k+3m/c82+II2yGL4dpWUSb67eISbreRovOb/u/3+\n\
-YywFB9DxA8AAsydOGYMCQQDYDDLAlytyG7EefQtDPRlGbFOOJrNRyQG+2KMEl/ti\n\
-Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
------END RSA PRIVATE KEY-----"
+        self.proxy_list = proxy_list
+        if self.proxy_list:
+            self.proxy_info = random.choice(self.proxy_list)
+            proxy_host, proxy_port, username_proxy, password_proxy = self.proxy_info.split(':')
+            self.proxies = {
+                'http': f'http://{username_proxy}:{password_proxy}@{proxy_host}:{proxy_port}',
+                'https': f'http://{username_proxy}:{password_proxy}@{proxy_host}:{proxy_port}'
+            }
+        else:
+            self.proxies = None
+
         if not os.path.exists(self.file):
             self.username = username
             self.password = password
@@ -73,10 +78,9 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             self.sessionId = ""
             self.mobileId = ""
             self.clientId = ""
-            self.cif = ""
+            self.cif = None
             self.res = ""
             self.browserToken = ""
-            self.browserId = ""
             self.E = ""
             self.tranId = ""
             self.browserId = hashlib.md5(self.username.encode()).hexdigest()
@@ -87,6 +91,10 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             self.username = username
             self.password = password
             self.account_number = account_number
+    def generate_sha256(self,username):
+        salt = "6q93-@u9"
+        data = (username + salt).encode()  # Chuyển thành bytes
+        return hashlib.sha256(data).hexdigest()
     def save_data(self):
         data = {
             'username': self.username,
@@ -129,6 +137,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         self.verify_type = data.get("verify_type", "")
         self.time_login = data.get("time_login", "")
         self.is_login = data.get("is_login", "")
+        
     def createTaskCaptcha(self, base64_img):
         url = 'http://103.72.96.214:8277/api/captcha/vietcombank'
         payload = json.dumps({
@@ -139,46 +148,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         }
         response = requests.post(url, headers=headers, data=payload)
         return response.text
-    # def createTaskCaptcha(self, base64_img):
-    #         url = "https://api.anti-captcha.com/createTask"
-    #         payload = json.dumps({
-    #         "clientKey": "f3a44e66302c61ffec07c80f4732baf3",
-    #         "task": {
-    #             "type": "ImageToTextTask",
-    #             "body": base64_img,
-    #             "phrase": False,
-    #             "case": False,
-    #             "numeric": 0,
-    #             "math": False,
-    #             "minLength": 0,
-    #             "maxLength": 0
-    #         },
-    #         "softId": 0
-    #         })
-    #         headers = {
-    #         'Accept': 'application/json',
-    #         'Content-Type': 'application/json'
-    #         }
 
-    #         response = requests.request("POST", url, headers=headers, data=payload)
-    #         return(response.text)
-    # def checkProgressCaptcha(self, task_id):
-    #     url = 'https://api.anti-captcha.com/getTaskResult'
-    #     data = {
-    #         "clientKey": "f3a44e66302c61ffec07c80f4732baf3",
-    #         "taskId": task_id
-    #     }
-    #     headers = {
-    #         'Accept': 'application/json',
-    #         'Content-Type': 'application/json'
-    #     }
-    #     response = requests.post(url, headers=headers, data=json.dumps(data))
-    #     response_json = json.loads(response.text)
-    #     if response_json["status"] != "ready":
-    #         time.sleep(1)
-    #         return self.checkProgressCaptcha(task_id)
-    #     else:
-    #         return response_json["solution"]["text"]
     def solveCaptcha(self):
         captchaToken = ''.join(random.choices(string.ascii_uppercase + string.digits, k=30))
         url = self.url['getCaptcha'] + captchaToken
@@ -243,24 +213,29 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
 
     def curlPost(self, url, data):
         encryptedData = self.encrypt_data(data)
-        print(encryptedData)
+        # print(encryptedData)
         headers = {
-            'Accept': 'application/json',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept-Language': 'vi',
-            'Connection': 'keep-alive',
-            'Content-Type': 'application/json',
-            'Host': 'digiapp.vietcombank.com.vn',
-            'Origin': 'https://vcbdigibank.vietcombank.com.vn',
-            'Referer': 'https://vcbdigibank.vietcombank.com.vn/',
-            'sec-ch-ua-mobile': '?0',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-site',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
-            'X-Channel': 'Web'
+        'accept': 'application/json, text/plain, */*',
+        'accept-language': 'en-US,en;q=0.9',
+        'cache-control': 'no-cache',
+        'content-type': 'application/json',
+        'origin': 'https://vcbdigibank.vietcombank.com.vn',
+        'pragma': 'no-cache',
+        'priority': 'u=1, i',
+        'referer': 'https://vcbdigibank.vietcombank.com.vn/',
+        'sec-ch-ua': '"Chromium";v="135", "Not:A-Brand";v="8", "Microsoft Edge";v="135"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0',
+        'x-channel': 'Web',
+        'x-lim-id': self.x_lim_id,
+        'x-request-id': str(int(time.time() * 1000)) + str(int(random.random() * 100)) + format(binascii.crc_hqx(b'some_input', 0), 'x'),
         }
-        response = requests.post(url, headers=headers, data=json.dumps(encryptedData))
+        # print('proxy',self.proxies)
+        response = requests.post(url, headers=headers, data=json.dumps(encryptedData),proxies=self.proxies)
         result = self.decrypt_data(response.json())
         return result
 
@@ -488,7 +463,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "PM": self.PM,
             "E": self.getE() or "",
             "browserId": self.browserId,
-            "browserName": "Edge 127.0.0.0",
+            "browserName": "Edge 135.0.0.0",
             "lang": self.lang,
             "mid": 3009,
             "cif": self.cif,
@@ -508,7 +483,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "DT": self.DT,
             "OV": self.OV,
             "PM": self.PM,
-            "E": self.getE() or "",
+            "E": None,
             "appVersion": self.appVersion,
             
             "browserId": self.browserId,
@@ -516,19 +491,21 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "captchaValue": solveCaptcha["captcha"],
             
             "cif": self.cif,
-            "clientId": self.clientId,
+            # "clientId": self.clientId,
             
-            "mobileId": self.mobileId,
+            # "mobileId": self.mobileId,
             "lang": self.lang,
             "mid": 6,
             "password": self.password,
             "user": self.username,
-            "sessionId": self.sessionId
+            # "sessionId": self.sessionId
             
         }
         result = self.curlPost(self.url['login'], param)
+        print(result)
         if 'code' in result and result["code"] == '00':
             self.sessionId = result["sessionId"]
+            print('set sessionId',self.sessionId)
             self.mobileId = result["userInfo"]["mobileId"]
             self.clientId = result["userInfo"]["clientId"]
             self.cif = result["userInfo"]["cif"]
@@ -545,10 +522,6 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             }
         elif result["code"] == '20231' and result["mid"] == '6':
             self.browserToken = result["browserToken"]
-            # if verify_type == "smart_otp":
-            #     return self.checkBrowser("5")  # 5 la smart otp
-            # elif verify_type == "sms_otp":
-            #     return self.checkBrowser("1")  # 5 la smart otp
             return self.checkBrowser() 
         else:
             return {
@@ -557,7 +530,26 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
                 "param": param,
                 'data': result or ""
             }
-
+    def login(self):
+        if not self.is_login or time.time() - self.time_login > 1800:
+            login = self.doLogin()
+            verify_type = self.verify_type
+            if 'success' not in login or not login['success']:
+                return login
+            if "data" in login and 'mid' in login["data"] and login["data"]['mid']== '3010':
+                if verify_type == "5":
+                    otp = input("challenge_code:"+login["data"]['challenge']+" | Enter SMART OTP: ")
+                    verify_otp = self.submitOtpLogin(otp)
+                else:
+                    otp = input("Enter SMS OTP:")
+                    verify_otp = self.submitOtpSMS(otp)
+                return verify_otp
+            return login
+        return {
+                'code': 200,
+                'success': True,
+                'message': 'Đăng nhập thành công'
+            }
     def getE(self):
         ahash = hashlib.md5(self.username.encode()).hexdigest()
         imei = '-'.join([ahash[i:i+4] for i in range(0, len(ahash), 4)])
@@ -569,51 +561,57 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         response = requests.get(url)
         result = base64.b64encode(response.content).decode('utf-8')
         return result
-    def get_balance(self):
-        if not self.is_login or time.time() - self.time_login > 1800:
-            login = self.doLogin()
-            if 'success' not in login or not login['success']:
-                return login
-        """
-        Retrieves the available balance for a given account number from the provided data.
+    def get_balance(self, retry = False):
+        try:
+            print(self.is_login, time.time() - self.time_login > 900)
+            if not self.is_login or time.time() - self.time_login > 900:
+                print('relogin')
+                login = self.login()
+                if 'success' not in login or not login['success']:
+                    return login
+            """
+            Retrieves the available balance for a given account number from the provided data.
 
-        Parameters:
-        account_number (str): The account number to search for.
+            Parameters:
+            account_number (str): The account number to search for.
 
-        Returns:
-        str: The available balance for the specified account number, or an error message if not found.
-        """
-        data = self.getlistAccount()
-        # if data and 'code' in data and data['code'] == '00' and 'DDAccounts' in data:
-        #     for account in data.get('DDAccounts', []):
-        #         if account['accountNumber'] == self.account_number:
-        #             return account
-        #     return None
-        print(data)
-        if data and 'code' in data and data['code'] == '00' and 'DDAccounts' in data:
-            for account in data.get('DDAccounts', []):
-                if self.account_number == account['accountNumber']:
-                    if float(account['availableBalance']) < 0:
-                        return {'code':448,'success': False, 'message': 'Blocked account with negative balances!',
-                                'data': {
-                                    'balance':float(account['availableBalance'])
-                                }
-                                }
-                    else:
-                        return {'code':200,'success': True, 'message': 'Thành công',
-                                'data':{
-                                    'account_number':self.account_number,
-                                    'balance':float(account['availableBalance'])
-                        }}
-            return {'code':404,'success': False, 'message': 'account_number not found!'} 
-        elif 'code' in data and data['code'] == '108': 
+            Returns:
+            str: The available balance for the specified account number, or an error message if not found.
+            """
+            data = self.getlistAccount()
+            # if data and 'code' in data and data['code'] == '00' and 'DDAccounts' in data:
+            #     for account in data.get('DDAccounts', []):
+            #         if account['accountNumber'] == self.account_number:
+            #             return account
+            #     return None
+            # print(data)
+            if data and 'code' in data and data['code'] == '00' and 'DDAccounts' in data:
+                for account in data.get('DDAccounts', []):
+                    if self.account_number == account['accountNumber']:
+                        if float(account['availableBalance']) < 0:
+                            return float(account['availableBalance'])
+                        else:
+                            return float(account['availableBalance'])
+                return -1
+            elif 'code' in data and data['code'] == '108': 
+                self.is_login = False
+                self.save_data()
+                if not retry:
+                    return self.get_balance(retry=True)
+                return -1
+            else: 
+                self.is_login = False
+                self.save_data()
+                if not retry:
+                    return self.get_balance(retry=True)
+                return -1
+        except Exception as e:
             self.is_login = False
             self.save_data()
-            return {'code':401 ,'success': False, 'message': data['des'] if 'des' in data else data} 
-        else: 
-            self.is_login = False
-            self.save_data()
-            return {'code':520 ,'success': False, 'message': 'Unknown Error!'} 
+            print(f"Error in get_balance: {str(e)}")
+            if not retry:
+                return self.get_balance(retry=True)
+            return -1
     def getlistAccount(self):
         param = {
             "DT": self.DT,
@@ -637,10 +635,12 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
             "OV": self.OV,
             "PM": self.PM,
             "browserId": self.browserId,
-            "E": self.getE() or "",
+            "E": None,
+            "lang": "vi",
+            "appVersion": "",
             "mid": 35,
             "cif": self.cif,
-            "serviceCode": "0551",
+            "serviceCode":  "0540,0541,0543,0551,2551",
             "user": self.username,
             "mobileId": self.mobileId,
             "clientId": self.clientId,
@@ -669,8 +669,8 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         return result
 
     def getHistories(self, fromDate="16/06/2023", toDate="16/06/2023", account_number='', page=0,limit = 20):
-        if not self.is_login or time.time() - self.time_login > 1800:
-                login = self.doLogin()
+        if not self.is_login or time.time() - self.time_login > 900:
+                login = self.login()
                 if 'success' not in login or not login['success']:
                     return login
         param = {
@@ -729,53 +729,202 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         result = self.curlPost(self.url['getBanks'], param)
         return result
 
-    def createTranferOutVietCombank(self, bankCode, account_number, amount, message):
-        param = {
+    def transfer_external_1(self, bankCode, account_number, amount, message,bank_detail):
+        param  = {
             "DT": self.DT,
             "OV": self.OV,
             "PM": self.PM,
-            "E": self.getE() or "",
+            "E": None,
+            "amount": str(amount),
+            "appVersion": "",
             "browserId": self.browserId,
-            "lang": self.lang,
-            "debitAccountNo": self.account_number,
-            "creditAccountNo": account_number,
-            "creditBankCode": bankCode,
-            "amount": amount,
-            "feeType": 1,
-            "content": message,
-            "ccyType": "1",
-            "mid": 62,
+            "ccyType": "2",
             "cif": self.cif,
-            "user": self.username,
-            "mobileId": self.mobileId,
             "clientId": self.clientId,
-            "sessionId": self.sessionId
+            "creditAccountNo": account_number,
+            "debitAccountNo": self.account_number,
+            "feeType": "1",
+            "lang": "vi",
+            "mid": 4034,
+            "mobileId": self.mobileId,
+            "omniBankCode": bank_detail['omniBankCode'],
+            "sessionId": self.sessionId,
+            "type": "account",
+            "user": self.username
         }
-        result = self.curlPost(self.url['tranferOut'], param)
+        result = self.curlPost(self.url['tranferOut_1'], param)
+        return result
+    
+    def transfer_external_2(self, bankCode, account_number, amount, message,bank_detail):
+        param  = {
+            "DT": self.DT,
+            "OV": self.OV,
+            "PM": self.PM,
+            "E": None,
+            "amount": str(amount),
+            "appVersion": "",
+            "browserId": self.browserId,
+            "ccyType": "2",
+            "cif": self.cif,
+            "clientId": self.clientId,
+            "creditAccountNo": account_number,
+            "debitAccountNo": self.account_number,
+            "feeType": "1",
+            "lang": "vi",
+            "mid": 4035,
+            "mobileId": self.mobileId,
+            "creditOmniBankCode": bank_detail['omniBankCode'],
+            "content": message,
+            "sessionId": self.sessionId,
+            "user": self.username
+        }
+        result = self.curlPost(self.url['tranferOut_2'], param)
+        return result
+        
+    def get_bank_name(self, bank_code ,account_number):
+        if bank_code == '970436':
+            param = {
+                "DT": self.DT,
+                "OV": self.OV,
+                "PM": self.PM,
+                "E": "",
+                "accountNo": account_number,
+                "appVersion": "",
+                "browserId": self.browserId,
+                "cif": self.cif,
+                "clientId": self.clientId,
+                "lang": self.lang,
+                "mobileId": self.mobileId,
+                "sessionId": self.sessionId,
+                "user": self.username,
+            }
+            result = self.curlPost(self.url['get_bank_name_in'], param)
+        else:
+            
+            param = {
+            "DT": self.DT,
+            "E": None,
+            "OV": self.OV,
+            "PM": self.PM,
+            "accountNo": account_number,
+            "appVersion": "",
+            "bankCode": str(bank_code),
+            "browserId": self.browserId,
+            "cif": self.cif,
+            "clientId": self.clientId,
+            "lang": self.lang,
+            "mid": 917,
+            "mobileId": self.mobileId,
+            "sessionId": self.sessionId,
+            "user": self.username
+        }
+            
+            result = self.curlPost(self.url['get_bank_name_out'], param)
+        if 'beneficiaryCusName' in result:
+            result['cardHolderName'] = result['beneficiaryCusName']
+        return result
+    def transfer_internal(self,account_name, account_number, amount, message):
+        param = {
+            "DT": self.DT,
+            "E": None,
+            "OV": self.OV,
+            "PM": self.PM,
+            "amount": str(amount),
+            "appVersion": "",
+            "browserId": self.browserId,
+            "ccyType": "2",
+            "cif": self.cif,
+            "clientId": self.clientId,
+            "content": message,
+            "creditAccountName": account_name,
+            "creditAccountNo": account_number,
+            "debitAccountNo": self.account_number,
+            "feeType": "1",
+            "lang": "vi",
+            "mid": 4038,
+            "mobileId": self.mobileId,
+            "sessionId": self.sessionId,
+            "transferCategory": None,  # undefined -> None
+            "user": self.username
+        }
+
+        result = self.curlPost(self.url['tranferIn'], param)
         return result
 
-    def createTranferInVietCombank(self, account_number, amount, message):
+    def send_verify_transfer(self,tranId,challengeCode, fptChallenge, fptSalt, fpt):
+        param = {
+        "DT": self.DT,
+        "E": None,
+        "OV": self.OV,
+        "PM": self.PM,
+        "appVersion": "",
+        "browserId": self.browserId,
+        "challengeCode": challengeCode,
+        "cif": self.cif,
+        "clientId": self.clientId,
+        "facepayChallenge": fptChallenge,
+        "facepaySalt": fptSalt,
+        "facepaySdkToken": fpt,
+        "lang": "vi",
+        "mid": 3014,
+        "mobileId": self.mobileId,
+        "sessionId": self.sessionId,
+        "tranId": tranId,
+        "user": self.username
+        }
+        print(param)
+
+        result = self.curlPost("https://digiapp.vietcombank.com.vn/authen-service/v1/api-3014", param)
+        return result
+
+    def check_verify_transfer(self,tranId):
+        param = {
+        "DT": self.DT,
+        "E": None,
+        "OV": self.OV,
+        "PM": self.PM,
+        "appVersion": "",
+        "browserId": self.browserId,
+        "cif": self.cif,
+        "clientId": self.clientId,
+        "lang": "vi",
+        "mid": 3015,
+        "mobileId": self.mobileId,
+        "sessionId": self.sessionId,
+        "tranId": tranId,
+        "user": self.username
+        }
+        print(param)
+
+        result = self.curlPost("https://digiapp.vietcombank.com.vn/authen-service/v1/api-3015", param)
+        return result
+
+    def send_request_transfer(self,account_name, account_number, amount, message):
         param = {
             "DT": self.DT,
+            "E": None,
             "OV": self.OV,
             "PM": self.PM,
-            "E": "",
+            "amount": str(amount),
+            "appVersion": "",
             "browserId": self.browserId,
-            "lang": self.lang,
-            "debitAccountNo": self.account_number,
-            "creditAccountNo": account_number,
-            "amount": amount,
-            "activeTouch": 0,
-            "feeType": 1,
-            "content": message,
-            "ccyType": "",
-            "mid": 16,
+            "ccyType": "2",
             "cif": self.cif,
-            "user": self.username,
-            "mobileId": self.mobileId,
             "clientId": self.clientId,
-            "sessionId": self.sessionId
+            "content": message,
+            "creditAccountName": account_name,
+            "creditAccountNo": account_number,
+            "debitAccountNo": self.account_number,
+            "feeType": "1",
+            "lang": "vi",
+            "mid": 4038,
+            "mobileId": self.mobileId,
+            "sessionId": self.sessionId,
+            "transferCategory": None,  # undefined -> None
+            "user": self.username
         }
+        print(param)
+
         result = self.curlPost(self.url['tranferIn'], param)
         return result
 
@@ -807,10 +956,13 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
                 "DT": self.DT,
                 "OV": self.OV,
                 "PM": self.PM,
-                "E": self.getE() or "",
+                "E": None,
+                "appVersion": "",
                 "lang": self.lang,
                 "tranId": tranId,
                 "type": otpType,  # 1 là SMS,5 là smart otp
+                "captchaToken": "",
+                "captchaValue": "",
                 "mid": 17,
                 "browserId": self.browserId,
                 "cif": self.cif,
@@ -819,6 +971,7 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
                 "clientId": self.clientId,
                 "sessionId": self.sessionId
             }
+            print(param)
 
         if type == "IN":
             result = self.curlPost(self.url['genOtpIn'], param)
@@ -869,3 +1022,241 @@ Yr4ZPChxNrik1CFLxfkesoReXN8kU/8918D0GLNeVt/C\n\
         else:
             result = self.curlPost(self.url['confirmTranferOut'], param)
         return result
+    def transfer(self,bank_code,account_name, ben_account_number, amount, message,bank_detail):
+        if bank_code == '970436':
+            result_transfer_init =  self.transfer_internal(account_name,ben_account_number, amount, message)
+            if result_transfer_init and 'transaction' in result_transfer_init and 'code' in result_transfer_init and result_transfer_init['code'] == '00':
+                tranId = result_transfer_init['transaction']['tranId']
+                otp = self.genOtpTranFer(tranId, type="IN", otpType=5)
+                otp['tranId'] = tranId
+                otp['type'] = "IN"
+                if 'code' in otp and otp['code'] == '00' and 'challenge' in otp:
+                    return otp
+                else:
+                    return otp
+        else:
+            list_account = self.getlistDDAccount()
+            # print('list_account',list_account)
+            result_transfer_init_0 =  self.transfer_external_1(bank_code, ben_account_number, amount, message,bank_detail)
+            
+            if result_transfer_init_0 and 'code' in result_transfer_init_0 and result_transfer_init_0['code'] == '00':
+                result_transfer_init =  self.transfer_external_2(bank_code, ben_account_number, amount, message,bank_detail)
+                print('result_transfer_init',result_transfer_init)
+
+                if result_transfer_init and 'code' in result_transfer_init and result_transfer_init['code'] == '00':   
+                    tranId = result_transfer_init['transaction']['tranId']
+                    otp = self.genOtpTranFer(tranId, type="OUT", otpType=5)
+                    print('otp', otp)
+                    otp['tranId'] = tranId
+                    otp['type'] = "OUT"
+                    if 'code' in otp and otp['code'] == '00' and 'challenge' in otp:
+                        return otp
+                    else:
+                        return otp
+            else:
+                return result_transfer_init_0
+
+
+
+        return result_transfer_init
+    def convert_to_uppercase_no_accents(self,text):
+        # Remove accents
+        no_accents = unidecode.unidecode(text)
+        # Convert to uppercase
+        return no_accents.upper()
+    def transferBank(self,bank_code, ben_account_number, amount, message,account_name):
+        info_bank = mapping_bank_code(bank_code)
+        bank_code = info_bank['bank_code']
+        
+        bank_send = {
+                    'bankCode': bank_code,
+                    'displayNameVi': info_bank['displayNameVi'],
+                    'shortName': info_bank['shortName']
+        }
+        # self.login()
+        global list_bank
+        check_st = time.time()
+        bank_code = bank_send['bankCode']
+
+
+        bank_detail = None
+        for bank in list_bank:
+            if bank['bank_code'] == bank_code:
+                bank_detail = bank
+                break
+        if not bank_detail:
+            return {
+            'code': 401,
+            'success': False,
+            'message': 'Tài khoản nhận không hợp lệ!',
+        }
+
+        print(ben_account_number, bank_code)
+        ben_account_info_origin = self.get_bank_name(bank_code,ben_account_number)
+        print('ben_account_info_origin',ben_account_info_origin)
+
+        ben_account_info = ben_account_info_origin
+        
+        if not ben_account_info or 'code' not in ben_account_info or (ben_account_info['code'] != '00' and ben_account_info['code'] != '2011'):   
+            return self.bank_checker_process(bank_send,ben_account_info,type="error")
+        if 'code' in ben_account_info and ben_account_info['code'] == '2011':
+            return {'code':418,'success': False, 'message': 'account_name mismatch!', 'data': ben_account_info_origin}
+        if ben_account_info['cardHolderName'].lower().strip().replace(' ','') != self.convert_to_uppercase_no_accents(account_name).lower().strip().replace(' ',''):
+            return self.bank_checker_process(bank_send,ben_account_info_origin,type="diff")
+
+        # partnerName = ben_account_info['cardHolderName']
+        # name_bank = bank_detail['bankName']
+        # bbank_code = bank_detail['bank']
+
+        transfer = self.transfer(bank_code,account_name, ben_account_number, amount, message,bank_detail)
+        print('transfer',transfer)
+        if ('data' not in transfer or 'code' not in transfer or transfer['code'] != '00') and 'des' in transfer:
+            return {'code':500,'success': False, 'message': transfer['des'], 'data': transfer}
+        
+        if  ('data' not in transfer or 'code' not in transfer or transfer['code'] != '00'):
+            return {'code':500,'success': False, 'data': transfer}  
+
+        
+        tranId = transfer['tranId']
+        challenge = transfer['challenge']
+        type_transfer = transfer['type']
+        print('set_up_transfer',time.time() - check_st)
+        check_st = time.time()
+        if 'fpt' in transfer and 'fptChallenge' in transfer and 'fptSalt' in transfer:
+            send_verify_transfer_result = self.send_verify_transfer(tranId,challenge, transfer['fptChallenge'], transfer['fptSalt'], transfer['fpt'])
+            print('send_verify_transfer',send_verify_transfer_result,time.time() - check_st)
+            if not send_verify_transfer_result or 'code' not in send_verify_transfer_result or send_verify_transfer_result['code'] != '00':
+                return {'code':500, 'success': False, 'message': 'Unknow error!', 'data': send_verify_transfer_result} 
+            print('Vui lòng xác thực giao dịch trên điện thoại(verify transfer in phone)!')
+            confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
+            st = time.time()
+            while not confirm_transfer or 'code' not in confirm_transfer or confirm_transfer['code'] != '00':
+                if st - time.time() > 60:
+                    return {'code':500, 'success': False, 'message': 'Timeout verify'}
+                time.sleep(3)
+                confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
+        else:
+            otp = input("challenge_code:"+challenge+" | Enter SMART OTP: ")
+            print('get_smart_otp',otp,time.time() - check_st)
+            confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
+            print('confirm_transfer',confirm_transfer)
+        if not otp:
+            return {'code':403, 'success': False, 'message': 'Get smart_otp error!'}
+        if otp == 'Face verify failed':
+            return {'code':500, 'success': False, 'message': 'Face verify failed'}
+        if otp == "Timeout reached":
+            if 'fpt' in transfer and 'fptChallenge' in transfer and 'fptSalt' in transfer:
+                send_verify_transfer_result = self.send_verify_transfer(tranId,challenge, transfer['fptChallenge'], transfer['fptSalt'], transfer['fpt'])
+                print('send_verify_transfer',send_verify_transfer_result,time.time() - check_st)
+                if not send_verify_transfer_result or 'code' not in send_verify_transfer_result or send_verify_transfer_result['code'] != '00':
+                    return {'code':500, 'success': False, 'message': 'Unknow error!', 'data': send_verify_transfer_result} 
+                print('Vui lòng xác thực giao dịch trên điện thoại(verify transfer in phone)!')
+                confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
+                st = time.time()
+                while not confirm_transfer or 'code' not in confirm_transfer or confirm_transfer['code'] != '00':
+                    if st - time.time() > 60:
+                        return {'code':500, 'success': False, 'message': 'Timeout verify'}
+                    time.sleep(3)
+                    confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
+            else:
+                otp = input("challenge_code:"+challenge+" | Enter SMART OTP: ")
+                print('get_smart_otp',otp,time.time() - check_st)
+                confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
+                print('confirm_transfer',confirm_transfer)
+
+
+        if not confirm_transfer or 'code' not in confirm_transfer or confirm_transfer['code'] != '00':
+            return {'code':405,'success': False, 'message': 'VCB Bank server error', 'data': confirm_transfer}
+        confirm_transfer['success'] = True
+        confirm_transfer['message'] = 'Thành công!'
+        confirm_transfer['code'] = 200
+        return confirm_transfer
+
+    def get_bank_checker(self,shortName, is_random=False, amount = 1):
+        file_path = 'bank_account_checker.json'
+
+        # Read the JSON data from the file
+        with open(file_path, 'r') as file:
+            list_bank_account = json.load(file)
+        if is_random:
+            if amount == 1:
+                return random.choice(list_bank_account)
+            else:
+                return random.sample(list_bank_account, amount)
+        for bank_account in list_bank_account:
+            if bank_account['bank_code'] == shortName:
+                return bank_account
+        return None
+    def bank_checker_process(self,bank_send,ben_account_info_origin,type="diff"):
+        shortName = bank_send['shortName']
+        bank_checker = self.get_bank_checker(shortName)
+        print('bank_checker',shortName,bank_checker)
+        if bank_checker:
+            print(bank_checker['account_number'], bank_send['bankCode'])
+            ben_account_info = self.get_bank_name(bank_send['bankCode'],bank_checker['account_number'])
+            
+            if not ben_account_info or 'code' not in ben_account_info or (ben_account_info['code'] != '00' and ben_account_info['code'] != '2011'):
+                return {'code':420,'success': False, 'message': 'Transfer Bank is in Maintenance!', 'data': ben_account_info}
+
+            if  ben_account_info['code'] == '2011':
+                if type == "diff":
+                    return {'code':419,'success': False, 'message': 'Receiver Bank is in Maintenance!', 'data': ben_account_info_origin}
+                elif type == "error":
+                    return {'code':419,'success': False, 'message': 'Receiver Bank is in Maintenance!', 'data': ben_account_info_origin}
+
+            if ben_account_info['cardHolderName'].lower().strip().replace(' ','') != self.convert_to_uppercase_no_accents(bank_checker['account_name']).lower().strip().replace(' ',''):
+                if type == "diff":
+                    return {
+                        'success': False,
+                        'code': 419,
+                        'message': 'Receiver Bank is in Maintenance!',
+                        'data': ben_account_info_origin
+                    }
+                elif type == "error":
+                    return {
+                        'success': False,
+                        'code': 419,
+                        'message': 'Receiver Bank is in Maintenance!',
+                        'data': ben_account_info_origin
+                    }
+            if type == "diff":        
+                return {'code':418,'success': False, 'message': 'account_name mismatch!', 'data': ben_account_info_origin}
+            elif type == "error":
+                return {'code':420,'success': False, 'message': 'Transfer Bank is in Maintenance!', 'data': ben_account_info}
+
+        else:
+            bank_checker_list = self.get_bank_checker(shortName,True,5)
+            for index, bank_checker in enumerate(bank_checker_list):
+                
+                ben_account_info = self.get_bank_name(bank_send['bankCode'],bank_checker['account_number'])
+                
+                if not ben_account_info or 'code' not in ben_account_info or (ben_account_info['code'] != '00' and ben_account_info['code'] != '2011'):
+                    return {'code':420,'success': False, 'message': 'Transfer Bank is in Maintenance!', 'data': ben_account_info}
+
+                if  ben_account_info['code'] == 2011:
+                    if type == "diff":
+                        return {'code':419,'success': False, 'message': 'Receiver Bank is in Maintenance!', 'data': ben_account_info_origin}
+                    elif type == "error":
+                        return {'code':419,'success': False, 'message': 'Receiver Bank is in Maintenance!', 'data': ben_account_info_origin}
+
+                if ben_account_info['cardHolderName'].lower().strip().replace(' ','') != self.convert_to_uppercase_no_accents(bank_checker['account_name']).lower().strip().replace(' ',''):
+                    if type == "diff":
+                        return {
+                            'success': False,
+                            'code': 419,
+                            'message': 'Receiver Bank is in Maintenance!',
+                            'data': ben_account_info_origin
+                        }
+                    elif type == "error":
+                        return {
+                            'success': False,
+                            'code': 419,
+                            'message': 'Receiver Bank is in Maintenance!',
+                            'data': ben_account_info_origin
+                        }
+                if index == 4:
+                    if type == "diff":        
+                        return {'code':418,'success': False, 'message': 'account_name mismatch!', 'data': ben_account_info_origin['data']}
+                    elif type == "error":
+                        return {'code':420,'success': False, 'message': 'Transfer Bank is in Maintenance!', 'data': ben_account_info}
+   
