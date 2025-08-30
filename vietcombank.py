@@ -33,7 +33,7 @@ class VCB:
         self.verify_type = '5'
         self.x_lim_id = self.generate_sha256(username)
         self.url = {
-            "getCaptcha": "https://digiapp.vietcombank.com.vn/utility-service/v1/captcha/",
+            "getCaptcha": "https://digiapp.vietcombank.com.vn/utility-service/v2/captcha/MASS/",
             "login": "https://digiapp.vietcombank.com.vn/authen-service/v1/login",
             "authen-service": "https://digiapp.vietcombank.com.vn/authen-service/v1/api-",
             "getHistories": "https://digiapp.vietcombank.com.vn/bank-service/v1/transaction-history",
@@ -46,7 +46,7 @@ class VCB:
             "tranferIn": "https://digiapp.vietcombank.com.vn/transfer-service/v2/init-internal-transfer",
             "getBanks": "https://digiapp.vietcombank.com.vn/utility-service/v1/get-banks",
             "getAccountDeltail": "https://digiapp.vietcombank.com.vn/bank-service/v1/get-account-detail",
-            "getlistAccount": "https://digiapp.vietcombank.com.vn/bank-service/v1/get-list-account-via-cif",
+            "getlistAccount": "https://digiapp.vietcombank.com.vn/bank-service/v2/get-list-account-via-cif",
             "getlistDDAccount": "https://digiapp.vietcombank.com.vn/bank-service/v1/get-list-ddaccount",
             "get_bank_name_in": "https://digiapp.vietcombank.com.vn/transfer-service/v1/get-bene-internal-cusname",
             "get_bank_name_out": "https://digiapp.vietcombank.com.vn/napas-service/v1/inquiry-holdername",
@@ -140,6 +140,8 @@ class VCB:
         
     def createTaskCaptcha(self, base64_img):
         url = 'http://103.72.96.214:8277/api/captcha/vietcombank'
+        # url = 'https://captcha.pay2world.vip/vcb'
+        print(base64_img)
         payload = json.dumps({
         "base64": base64_img
         })
@@ -155,8 +157,10 @@ class VCB:
         response = requests.get(url)
         base64_captcha_img = base64.b64encode(response.content).decode('utf-8')
         task = self.createTaskCaptcha(base64_captcha_img)
+        print('task',task)
         # captchaText = self.checkProgressCaptcha(json.loads(task)['taskId'])
-        captchaText =json.loads(task)['captcha']
+        res_captcha = json.loads(task)
+        captchaText =res_captcha['captcha'] if 'captcha' in  res_captcha else res_captcha['prediction']
         return {"status": True, "key": captchaToken, "captcha": captchaText}
 
     def encrypt_data(self, data):
@@ -166,16 +170,15 @@ class VCB:
         https://encrypt1.pay2world.vip/api.php?act=encrypt_viettin
         """
         
-        url_1 = 'https://sodo666.vip/vietcombank/encrypt'
-        url_2 = 'https://babygroupvip.com/vietcombank/encrypt'
-        url_3 = 'https://vcbbiz2.pay2world.vip/vietcombank/encrypt'
+        url_1 = 'https://vcbbiz1.pay2world.vip/vietcombank/encrypt'
+        url_3 = 'https://vcbbiz.pay2world.vip/vietcombank/encrypt'
         
         payload = json.dumps(data)
         headers = {
             'Content-Type': 'application/json',
         }
         
-        for _url in [url_1, url_2, url_3]:
+        for _url in [url_1, url_3]:
             try:
                 response = requests.request("POST", _url, headers=headers, data=payload, timeout=10)
                 if response.status_code in [404, 502]:
@@ -192,16 +195,15 @@ class VCB:
         https://encrypt1.pay2world.vip/api.php?act=encrypt_viettin
         """
         
-        url_1 = 'https://sodo666.vip/vietcombank/decrypt'
-        url_2 = 'https://vcbcp1.pay2world.vip/vietcombank/decrypt'
-        url_3 = 'https://vcbbiz2.pay2world.vip/vietcombank/decrypt'
+        url_1 = 'https://vcbbiz1.pay2world.vip/vietcombank/decrypt'
+        url_3 = 'https://vcbbiz.pay2world.vip/vietcombank/decrypt'
         
         payload = json.dumps(cipher)
         headers = {
             'Content-Type': 'application/json',
         }
         
-        for _url in [url_1, url_2, url_3]:
+        for _url in [url_1, url_3]:
             try:
                 response = requests.request("POST", _url, headers=headers, data=payload, timeout=10)
                 if response.status_code in [404, 502]:
@@ -236,7 +238,14 @@ class VCB:
         }
         # print('proxy',self.proxies)
         response = requests.post(url, headers=headers, data=json.dumps(encryptedData),proxies=self.proxies)
-        result = self.decrypt_data(response.json())
+        try:
+            result = self.decrypt_data(response.json())
+            if 'code' in result and result['code'] == '108':
+                self.is_login = False
+                self.save_data()
+        except:
+            result = response.text
+        
         return result
 
     def checkBrowser(self, type='1'):
@@ -561,6 +570,57 @@ class VCB:
         response = requests.get(url)
         result = base64.b64encode(response.content).decode('utf-8')
         return result
+    # def get_balance(self, retry = False):
+    #     try:
+    #         print(self.is_login, time.time() - self.time_login > 900)
+    #         if not self.is_login or time.time() - self.time_login > 900:
+    #             print('relogin')
+    #             login = self.login()
+    #             if 'success' not in login or not login['success']:
+    #                 return login
+    #         """
+    #         Retrieves the available balance for a given account number from the provided data.
+
+    #         Parameters:
+    #         account_number (str): The account number to search for.
+
+    #         Returns:
+    #         str: The available balance for the specified account number, or an error message if not found.
+    #         """
+    #         data = self.getlistAccount()
+    #         # if data and 'code' in data and data['code'] == '00' and 'DDAccounts' in data:
+    #         #     for account in data.get('DDAccounts', []):
+    #         #         if account['accountNumber'] == self.account_number:
+    #         #             return account
+    #         #     return None
+    #         print(data)
+    #         if data and 'code' in data and data['code'] == '00' and 'DDAccounts' in data:
+    #             for account in data.get('DDAccounts', []):
+    #                 if self.account_number == account['accountNumber']:
+    #                     if float(account['availableBalance']) < 0:
+    #                         return float(account['availableBalance'])
+    #                     else:
+    #                         return float(account['availableBalance'])
+    #             return -1
+    #         elif 'code' in data and data['code'] == '108': 
+    #             self.is_login = False
+    #             self.save_data()
+    #             if not retry:
+    #                 return self.get_balance(retry=True)
+    #             return -1
+    #         else: 
+    #             self.is_login = False
+    #             self.save_data()
+    #             if not retry:
+    #                 return self.get_balance(retry=True)
+    #             return -1
+    #     except Exception as e:
+    #         self.is_login = False
+    #         self.save_data()
+    #         print(f"Error in get_balance: {str(e)}")
+    #         if not retry:
+    #             return self.get_balance(retry=True)
+    #         return -1
     def get_balance(self, retry = False):
         try:
             print(self.is_login, time.time() - self.time_login > 900)
@@ -578,20 +638,16 @@ class VCB:
             Returns:
             str: The available balance for the specified account number, or an error message if not found.
             """
-            data = self.getlistAccount()
-            # if data and 'code' in data and data['code'] == '00' and 'DDAccounts' in data:
-            #     for account in data.get('DDAccounts', []):
-            #         if account['accountNumber'] == self.account_number:
-            #             return account
-            #     return None
-            # print(data)
-            if data and 'code' in data and data['code'] == '00' and 'DDAccounts' in data:
-                for account in data.get('DDAccounts', []):
-                    if self.account_number == account['accountNumber']:
-                        if float(account['availableBalance']) < 0:
-                            return float(account['availableBalance'])
-                        else:
-                            return float(account['availableBalance'])
+            data = self.getAccountDeltail()
+
+            if data and 'code' in data and data['code'] == '00' and 'accountDetail' in data:
+                account = data.get('accountDetail', [])
+                if self.account_number == account['accountNo']:
+                    balance = float(account['availBalance'].replace(',',''))
+                    if balance < 0:
+                        return balance
+                    else:
+                        return balance
                 return -1
             elif 'code' in data and data['code'] == '108': 
                 self.is_login = False
@@ -822,6 +878,7 @@ class VCB:
             result = self.curlPost(self.url['get_bank_name_out'], param)
         if 'beneficiaryCusName' in result:
             result['cardHolderName'] = result['beneficiaryCusName']
+
         return result
     def transfer_internal(self,account_name, account_number, amount, message):
         param = {
@@ -851,7 +908,7 @@ class VCB:
         result = self.curlPost(self.url['tranferIn'], param)
         return result
 
-    def send_verify_transfer(self,tranId,challengeCode, fptChallenge, fptSalt, fpt):
+    def send_verify_transfer(self,tranId,challengeCode, fptChallenge=None, fptSalt=None, fpt=None):
         param = {
         "DT": self.DT,
         "E": None,
@@ -1128,43 +1185,30 @@ class VCB:
             if not send_verify_transfer_result or 'code' not in send_verify_transfer_result or send_verify_transfer_result['code'] != '00':
                 return {'code':500, 'success': False, 'message': 'Unknow error!', 'data': send_verify_transfer_result} 
             print('Vui lòng xác thực giao dịch trên điện thoại(verify transfer in phone)!')
-            confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
+            confirm_transfer = self.confirmTranfer(tranId,challenge,"",type_transfer)
             st = time.time()
             while not confirm_transfer or 'code' not in confirm_transfer or confirm_transfer['code'] != '00':
                 if st - time.time() > 60:
                     return {'code':500, 'success': False, 'message': 'Timeout verify'}
                 time.sleep(3)
-                confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
+                confirm_transfer = self.confirmTranfer(tranId,challenge,"",type_transfer)
         else:
-            otp = input("challenge_code:"+challenge+" | Enter SMART OTP: ")
-            print('get_smart_otp',otp,time.time() - check_st)
-            confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
-            print('confirm_transfer',confirm_transfer)
-        if not otp:
-            return {'code':403, 'success': False, 'message': 'Get smart_otp error!'}
-        if otp == 'Face verify failed':
-            return {'code':500, 'success': False, 'message': 'Face verify failed'}
-        if otp == "Timeout reached":
-            if 'fpt' in transfer and 'fptChallenge' in transfer and 'fptSalt' in transfer:
-                send_verify_transfer_result = self.send_verify_transfer(tranId,challenge, transfer['fptChallenge'], transfer['fptSalt'], transfer['fpt'])
-                print('send_verify_transfer',send_verify_transfer_result,time.time() - check_st)
-                if not send_verify_transfer_result or 'code' not in send_verify_transfer_result or send_verify_transfer_result['code'] != '00':
-                    return {'code':500, 'success': False, 'message': 'Unknow error!', 'data': send_verify_transfer_result} 
-                print('Vui lòng xác thực giao dịch trên điện thoại(verify transfer in phone)!')
-                confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
-                st = time.time()
-                while not confirm_transfer or 'code' not in confirm_transfer or confirm_transfer['code'] != '00':
-                    if st - time.time() > 60:
-                        return {'code':500, 'success': False, 'message': 'Timeout verify'}
-                    time.sleep(3)
-                    confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
-            else:
-                otp = input("challenge_code:"+challenge+" | Enter SMART OTP: ")
-                print('get_smart_otp',otp,time.time() - check_st)
-                confirm_transfer = self.confirmTranfer(tranId,challenge,otp,type_transfer)
-                print('confirm_transfer',confirm_transfer)
+            send_verify_transfer_result = self.send_verify_transfer(tranId,challenge)
+            print('send_verify_transfer',send_verify_transfer_result,time.time() - check_st)
+            if not send_verify_transfer_result or 'code' not in send_verify_transfer_result or send_verify_transfer_result['code'] != '00':
+                return {'code':500, 'success': False, 'message': 'Unknow error!', 'data': send_verify_transfer_result} 
+            print('Vui lòng xác thực giao dịch trên điện thoại(verify transfer in phone)!')
+            check_verify_transfer = self.check_verify_transfer(tranId)
+            st = time.time()
+            while not check_verify_transfer or 'code' not in check_verify_transfer or check_verify_transfer['code'] != '00':
+                if st - time.time() > 60:
+                    return {'code':500, 'success': False, 'message': 'Timeout verify'}
+                time.sleep(2)
+                check_verify_transfer = self.check_verify_transfer(tranId)
 
 
+
+        confirm_transfer = self.confirmTranfer(tranId,challenge,"",type_transfer)
         if not confirm_transfer or 'code' not in confirm_transfer or confirm_transfer['code'] != '00':
             return {'code':405,'success': False, 'message': 'VCB Bank server error', 'data': confirm_transfer}
         confirm_transfer['success'] = True
